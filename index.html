@@ -98,3 +98,95 @@
     const photo = document.getElementById("photo");
     const message = document.getElementById("message");
     const downloadButton = document.getElementById("downloadButton");
+
+    function showError(text) {
+      photo.hidden = true;
+      downloadButton.hidden = true;
+      message.hidden = false;
+      message.textContent = text;
+    }
+
+    function isAllowedImageUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+        return parsedUrl.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }
+
+    function buildDownloadFileName(blob, url) {
+      const now = new Date();
+      const datePart = now.toISOString()
+        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}Z$/, "");
+      const randomPart = Math.random().toString(36).slice(2, 8);
+      const extension = getImageExtension(blob.type, url);
+
+      return `foto_${datePart}_${randomPart}${extension}`;
+    }
+
+    function getImageExtension(mimeType, url) {
+      const mimeExtensions = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif"
+      };
+
+      if (mimeExtensions[mimeType]) {
+        return mimeExtensions[mimeType];
+      }
+
+      try {
+        const path = new URL(url).pathname.toLowerCase();
+        const match = path.match(/\.(jpg|jpeg|png|webp|gif)$/);
+
+        if (match) {
+          return match[1] === "jpeg" ? ".jpg" : `.${match[1]}`;
+        }
+      } catch {
+        // Si no se puede leer la URL, usamos JPG como extension por defecto.
+      }
+
+      return ".jpg";
+    }
+
+    async function downloadImage(url) {
+      try {
+        const response = await fetch(url, { mode: "cors" });
+        if (!response.ok) {
+          throw new Error("No se pudo descargar la imagen.");
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = buildDownloadFileName(blob, url);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    }
+
+    if (!imageUrl) {
+      showError("No se recibio una URL de imagen.");
+    } else if (!isAllowedImageUrl(imageUrl)) {
+      showError("La URL de imagen no es valida.");
+    } else {
+      photo.src = imageUrl;
+      photo.onload = () => {
+        message.hidden = true;
+        photo.hidden = false;
+        downloadButton.hidden = false;
+      };
+      photo.onerror = () => showError("No se pudo cargar la foto.");
+      downloadButton.addEventListener("click", () => downloadImage(imageUrl));
+    }
+  </script>
+</body>
+</html>
