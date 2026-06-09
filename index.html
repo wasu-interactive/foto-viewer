@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foto</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: #111827;
+    }
+
+    main {
+      width: min(100%, 920px);
+      display: grid;
+      gap: 16px;
+    }
+
+    .photo-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 280px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #030712;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 128px);
+      object-fit: contain;
+    }
+
+    .download-button {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(calc(100% - 32px), 360px);
+      min-height: 52px;
+      border: 0;
+      border-radius: 8px;
+      background: #0f766e;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+    }
+
+    .download-button:active {
+      transform: translateX(-50%) scale(0.98);
+    }
+
+    .message {
+      padding: 18px;
+      border-radius: 8px;
+      background: #1f2937;
+      color: #f9fafb;
+      line-height: 1.45;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="photo-wrap" aria-label="Foto seleccionada">
+      <img id="photo" alt="Foto seleccionada" hidden>
+      <p id="message" class="message">Cargando foto...</p>
+    </section>
+  </main>
+
+  <button id="downloadButton" class="download-button" hidden>Descargar foto</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const imageUrl = params.get("img");
+    const photo = document.getElementById("photo");
+    const message = document.getElementById("message");
+    const downloadButton = document.getElementById("downloadButton");
+
+    function showError(text) {
+      photo.hidden = true;
+      downloadButton.hidden = true;
+      message.hidden = false;
+      message.textContent = text;
+    }
+
+    function isAllowedImageUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+        return parsedUrl.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }
+
+    async function downloadImage(url) {
+      try {
+        const response = await fetch(url, { mode: "cors" });
+        if (!response.ok) {
+          throw new Error("No se pudo descargar la imagen.");
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = "foto.jpg";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    }
+
+    if (!imageUrl) {
+      showError("No se recibio una URL de imagen.");
+    } else if (!isAllowedImageUrl(imageUrl)) {
+      showError("La URL de imagen no es valida.");
+    } else {
+      photo.src = imageUrl;
+      photo.onload = () => {
+        message.hidden = true;
+        photo.hidden = false;
+        downloadButton.hidden = false;
+      };
+      photo.onerror = () => showError("No se pudo cargar la foto.");
+      downloadButton.addEventListener("click", () => downloadImage(imageUrl));
+    }
+  </script>
+</body>
+</html>
